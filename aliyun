@@ -1,0 +1,48 @@
+#https://help.aliyun.com/document_detail/28622.html?spm=5176.doc51939.6.653.CEdNWI
+#通过阿里云云监控sdk获取oss的跨区域复制流量
+from aliyunsdkcore import client
+from aliyunsdkcms.request.v20170301 import QueryMetricListRequest
+import json
+
+def get_oss_syncsend(start_time,end_time,bucket):
+    clt = client.AcsClient('your_access_key', 'your_access_secret', 'cn-beijing')
+    request = QueryMetricListRequest.QueryMetricListRequest()
+    request.set_accept_format('json')
+    request.set_Project('acs_oss')
+    request.set_Metric('SyncSend')
+    request.set_StartTime(start_time)
+    request.set_EndTime(end_time)
+    request.set_Dimensions({"BucketName": bucket})
+    request.set_Period('60')
+    result = clt.do_action_with_exception(request)
+    data = json.loads(result)
+    sum_syncsend = 0
+    for i in data['Datapoints']:
+        sum_syncsend = sum_syncsend + i['SyncSend']
+    return sum_syncsend
+
+bucket_list=['桶名1','桶名2','桶名3']
+start=input('请输入开始时间')
+start_time="2017-%s-01 00:00:00"%(start)
+print(start_time)
+end=input('请输入结束时间')
+end_time="2017-%s-%s 23:59:59"%(start,end)
+print(end_time)
+
+# for i in bucket_list:
+#     s = s + get_oss_syncsend(start_time, end_time, i)
+# print('%sG' % (s / 1000000000))
+c = 1
+＃因调用阿里云接口有内部503临时错误，增加循环获取数据直至成功为止；
+while True:
+    s=0
+    try:
+        for i in bucket_list:
+            s=s+get_oss_syncsend(start_time,end_time,i)
+        print('%sG'%(s/1000000000))
+        break
+    except Exception:
+        print('路过%s次错误')%c
+        c+=1
+        print(s)
+        continue
